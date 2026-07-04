@@ -1,5 +1,6 @@
 class Api::EventsController < ApplicationController
   skip_before_action :verify_authenticity_token
+  before_action :verify_telemetry_api_key, only: [:create]
 
   def create
     if params[:event_name] == "heartbeat"
@@ -34,6 +35,18 @@ class Api::EventsController < ApplicationController
 
   #----------------------------------------------------------
   private
+
+  def verify_telemetry_api_key
+    expected_key = ENV["TELEMETRY_API_KEY"]
+
+    return if expected_key.present? &&
+              ActiveSupport::SecurityUtils.secure_compare(
+                request.headers["X-Dot-Matrix-Api-Key"].to_s,
+                expected_key
+              )
+
+    render json: { status: "error", error: "unauthorized" }, status: :unauthorized
+  end
 
   def handle_heartbeat
     session = touch_session(params[:player_id], params[:session_id])
