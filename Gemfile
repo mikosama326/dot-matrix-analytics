@@ -67,3 +67,8 @@ end
 
 gem "fiddle"
 gem "rack-cors"
+
+group :production do
+  # Using Postgres for production db
+  gem "pg"
+end
