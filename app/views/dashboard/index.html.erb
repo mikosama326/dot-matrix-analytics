@@ -1,3 +1,4 @@
+<% content_for :title, "Dot Matrix Telemetry Dashboard" %>
 <style>
   :root {
     --bg: #0b1020;
@@ -182,8 +183,8 @@
 <main>
   <section class="header">
     <div>
-      <h1>Dot Matrix Analytics</h1>
-      <div class="subtitle">Live telemetry from Dot Matrix sessions.</div>
+      <h1>Dot Matrix Telemetry Dashboard</h1>
+      <div class="subtitle">Live analytics from production gameplay sessions.</div>
     </div>
 
     <div class="live-badge">
@@ -260,22 +261,20 @@
     </div>
   </section>
 
-  <h2>Recent Events</h2>
+  <h2>Live Event Feed</h2>
   <div class="panel table-wrap">
     <table>
       <thead>
         <tr>
           <th>Time</th>
-          <th>Session</th>
           <th>Event</th>
-          <th>Properties</th>
+          <th>Details</th>
         </tr>
       </thead>
       <tbody id="recent-events-body">
         <% @recent_events.each do |event| %>
           <tr>
-            <td class="muted"><%= event.created_at %></td>
-            <td class="muted"><%= event.session_id %></td>
+            <td class="muted" data-timestamp="<%= event.created_at.iso8601 %>"></td>
             <td><span class="pill"><%= event.event_name %></span></td>
             <td><pre><%= JSON.pretty_generate(event.properties || {}) %></pre></td>
           </tr>
@@ -290,18 +289,21 @@
       <thead>
         <tr>
           <th>Last Seen</th>
-          <th>Player</th>
-          <th>Session</th>
-          <th>Active Seconds</th>
+          <th>Active Time</th>
         </tr>
       </thead>
       <tbody id="recent-sessions-body">
         <% @recent_sessions.each do |session| %>
+          <% seconds = session.active_seconds.to_i %>
           <tr>
-            <td class="muted"><%= session.last_seen_at %></td>
-            <td class="muted"><%= session.player_id %></td>
-            <td class="muted"><%= session.session_id %></td>
-            <td><%= session.active_seconds %></td>
+            <td class="muted" data-timestamp="<%= session.last_seen_at&.iso8601 %>"></td>
+            <td>
+              <% if seconds < 60 %>
+                <%= seconds %> sec
+              <% else %>
+                <%= (seconds / 60.0).round(1) %> min
+              <% end %>
+            </td>
           </tr>
         <% end %>
       </tbody>
@@ -312,6 +314,38 @@
     import { createConsumer } from "@rails/actioncable";
 
     const consumer = createConsumer();
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatTime(value) {
+      if (!value) return "Unknown";
+  
+      return new Date(value).toLocaleString([], {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+      });
+    }
+
+    function formatActiveTime(seconds) {
+      const value = Number(seconds || 0);
+
+      if (value < 60) {
+        return `${value} sec`;
+      }
+
+      return `${(value / 60.0).toFixed(1)} min`;
+    }
 
     function updateStat(name, value) {
       const el = document.querySelector(`[data-stat='${name}']`);
@@ -326,52 +360,49 @@
     function renderEventCounts(eventCounts) {
       const body = document.querySelector("#event-counts-body");
       if (!body) return;
-  
+
       body.innerHTML = Object.entries(eventCounts).map(([eventName, count]) => `
-          <tr>
-          <td><span class="pill">${eventName}</span></td>
-          <td>${count}</td>
-          </tr>
+        <tr>
+          <td><span class="pill">${escapeHtml(eventName)}</span></td>
+          <td>${escapeHtml(count)}</td>
+        </tr>
       `).join("");
-      }
-  
+    }
+
     function renderItemsPlaced(itemCounts) {
       const body = document.querySelector("#items-placed-body");
       if (!body) return;
-  
+
       body.innerHTML = Object.entries(itemCounts).map(([itemName, count]) => `
-          <tr>
-          <td>${itemName || "(unknown)"}</td>
-          <td>${count}</td>
-          </tr>
+        <tr>
+          <td>${escapeHtml(itemName || "(unknown)")}</td>
+          <td>${escapeHtml(count)}</td>
+        </tr>
       `).join("");
     }
 
     function renderRecentEvents(events) {
       const body = document.querySelector("#recent-events-body");
       if (!body) return;
-  
+
       body.innerHTML = events.map((event) => `
-          <tr>
-          <td class="muted">${event.created_at}</td>
-          <td class="muted">${event.session_id}</td>
-          <td><span class="pill">${event.event_name}</span></td>
-          <td><pre>${JSON.stringify(event.properties || {}, null, 2)}</pre></td>
-          </tr>
+        <tr>
+          <td class="muted">${escapeHtml(formatTime(event.created_at))}</td>
+          <td><span class="pill">${escapeHtml(event.event_name)}</span></td>
+          <td><pre>${escapeHtml(JSON.stringify(event.properties || {}, null, 2))}</pre></td>
+        </tr>
       `).join("");
     }
 
     function renderRecentSessions(sessions) {
       const body = document.querySelector("#recent-sessions-body");
       if (!body) return;
-  
+
       body.innerHTML = sessions.map((session) => `
-          <tr>
-          <td class="muted">${session.last_seen_at}</td>
-          <td class="muted">${session.player_id}</td>
-          <td class="muted">${session.session_id}</td>
-          <td>${session.active_seconds}</td>
-          </tr>
+        <tr>
+          <td class="muted">${escapeHtml(formatTime(session.last_seen_at))}</td>
+          <td>${escapeHtml(formatActiveTime(session.active_seconds))}</td>
+        </tr>
       `).join("");
     }
 
@@ -386,27 +417,31 @@
         if ("total_events" in data) updateStat("total-events", data.total_events);
         if ("total_sessions" in data) updateStat("total-sessions", data.total_sessions);
         if ("unique_players" in data) updateStat("unique-players", data.unique_players);
+
         if ("total_active_seconds" in data) {
-        updateStat("active-minutes", (data.total_active_seconds / 60.0).toFixed(2));
+          updateStat("active-minutes", (data.total_active_seconds / 60.0).toFixed(2));
         }
 
         if ("event_counts" in data) {
-        renderEventCounts(data.event_counts);
+          renderEventCounts(data.event_counts);
         }
 
         if ("item_placed_counts" in data) {
-        renderItemsPlaced(data.item_placed_counts);
+          renderItemsPlaced(data.item_placed_counts);
         }
 
         if ("recent_events" in data) {
-        renderRecentEvents(data.recent_events);
+          renderRecentEvents(data.recent_events);
         }
 
         if ("recent_sessions" in data) {
-        renderRecentSessions(data.recent_sessions);
+          renderRecentSessions(data.recent_sessions);
         }
       }
     });
-    
+
+    document.querySelectorAll("[data-timestamp]").forEach((element) => {
+  element.textContent = formatTime(element.dataset.timestamp);
+});
   </script>
 </main>
