@@ -16,8 +16,16 @@ class DashboardController < ApplicationController
     @event_counts = AnalyticsEvent.group(:event_name).count
     @item_placed_counts = AnalyticsEvent
   .where(event_name: "item_placed")
-  .group("json_extract(properties, '$.item_id')")
+  .group(json_property("item_id"))
   .order(Arel.sql("COUNT(*) DESC"))
   .count
+  end
+
+  def json_property(field_name)
+    if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgresql")
+      Arel.sql("properties->>'#{field_name}'")
+    else
+      Arel.sql("json_extract(properties, '$.#{field_name}')")
+    end
   end
 end
