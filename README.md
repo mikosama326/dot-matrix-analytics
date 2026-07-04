@@ -1,24 +1,7 @@
 # README
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+A simple Ruby on Rails application to collect and display analytics for my game, Dot Matrix (play it here: https://mikosama326.github.io/dot-matrix-game/)
 
-Things you may want to cover:
+Dev environment runs on SQLite, production environment uses PostgreSQL. You can check out the dashboard at https://dot-matrix-analytics-api.onrender.com/
 
-* Ruby version
-
-* System dependencies
-
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+Also I am using the free tier of Render for hosting at the moment so it might take a minute to load.
