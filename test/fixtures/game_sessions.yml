@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  player_id: MyString
+  session_id: MyString
+  active_seconds: 1
+  last_seen: 2026-07-03 14:24:04
+
+two:
+  player_id: MyString
+  session_id: MyString
+  active_seconds: 1
+  last_seen: 2026-07-03 14:24:04
