@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_03_221942) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_05_191345) do
   create_table "analytics_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_name"
@@ -23,6 +23,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_03_221942) do
   create_table "game_sessions", force: :cascade do |t|
     t.integer "active_seconds"
     t.datetime "created_at", null: false
+    t.integer "last_dot_consumption_rate"
+    t.integer "last_dot_production_rate"
+    t.integer "last_dots_available"
+    t.string "last_event_name"
+    t.string "last_item_id"
+    t.integer "last_item_level"
     t.datetime "last_seen_at"
     t.string "player_id"
     t.string "session_id"

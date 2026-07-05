@@ -195,11 +195,6 @@
 
   <section class="cards">
     <div class="card">
-      <div class="card-label">Total Events</div>
-      <div class="card-value" data-stat="total-events"><%= @total_events %></div>
-    </div>
-
-    <div class="card">
       <div class="card-label">Sessions</div>
       <div class="card-value" data-stat="total-sessions"><%= @total_sessions %></div>
     </div>
@@ -210,36 +205,14 @@
     </div>
 
     <div class="card">
-      <div class="card-label">Active Minutes</div>
+      <div class="card-label">Total Active Minutes</div>
       <div class="card-value" data-stat="active-minutes"><%= (@total_active_seconds / 60.0).round(2) %></div>
     </div>
   </section>
 
   <section class="grid">
     <div>
-      <h2>Event Counts</h2>
-      <div class="panel table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Count</th>
-            </tr>
-          </thead>
-          <tbody id="event-counts-body">
-            <% @event_counts.each do |event_name, count| %>
-              <tr>
-                <td><span class="pill"><%= event_name %></span></td>
-                <td><%= count %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div>
-      <h2>Items Placed</h2>
+      <h2>Most Popular Items</h2>
       <div class="panel table-wrap">
         <table>
           <thead>
@@ -261,6 +234,38 @@
     </div>
   </section>
 
+<h2>Current Sessions</h2>
+<div class="panel table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Last Seen</th>
+        <th>Active</th>
+        <th>Dots</th>
+        <th>Production</th>
+        <th>Consumption</th>
+        <th>Last Event</th>
+        <th>Last Item</th>
+        <th>Item Level</th>
+      </tr>
+    </thead>
+    <tbody id="recent-sessions-body">
+      <% @recent_sessions.each do |session| %>
+        <tr>
+          <td class="muted" data-timestamp="<%= session.last_seen_at&.iso8601 %>"></td>
+          <td><%= session.active_seconds.to_i < 60 ? "#{session.active_seconds.to_i} sec" : "#{(session.active_seconds.to_i / 60.0).round(1)} min" %></td>
+          <td><%= session.last_dots_available || "—" %></td>
+          <td><%= session.last_dot_production_rate.nil? ? "—" : "+#{session.last_dot_production_rate.round(2)}/s" %></td>
+          <td><%= session.last_dot_consumption_rate.nil? ? "—" : "-#{session.last_dot_consumption_rate.round(2)}/s" %></td>
+          <td><span class="pill"><%= session.last_event_name || "—" %></span></td>
+          <td><%= session.last_item_id || "—" %></td>
+          <td><%= session.last_item_level || "—" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
   <h2>Live Event Feed</h2>
   <div class="panel table-wrap">
     <table>
@@ -277,33 +282,6 @@
             <td class="muted" data-timestamp="<%= event.created_at.iso8601 %>"></td>
             <td><span class="pill"><%= event.event_name %></span></td>
             <td><pre><%= JSON.pretty_generate(event.properties || {}) %></pre></td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
-
-  <h2>Recent Sessions</h2>
-  <div class="panel table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Last Seen</th>
-          <th>Active Time</th>
-        </tr>
-      </thead>
-      <tbody id="recent-sessions-body">
-        <% @recent_sessions.each do |session| %>
-          <% seconds = session.active_seconds.to_i %>
-          <tr>
-            <td class="muted" data-timestamp="<%= session.last_seen_at&.iso8601 %>"></td>
-            <td>
-              <% if seconds < 60 %>
-                <%= seconds %> sec
-              <% else %>
-                <%= (seconds / 60.0).round(1) %> min
-              <% end %>
-            </td>
           </tr>
         <% end %>
       </tbody>
@@ -394,17 +372,28 @@
       `).join("");
     }
 
-    function renderRecentSessions(sessions) {
-      const body = document.querySelector("#recent-sessions-body");
-      if (!body) return;
+function formatNumber(value, digits = 2) {
+  if (value === null || value === undefined || value === "") return "—";
+  return Number(value).toFixed(digits);
+}
 
-      body.innerHTML = sessions.map((session) => `
-        <tr>
-          <td class="muted">${escapeHtml(formatTime(session.last_seen_at))}</td>
-          <td>${escapeHtml(formatActiveTime(session.active_seconds))}</td>
-        </tr>
-      `).join("");
-    }
+function renderRecentSessions(sessions) {
+  const body = document.querySelector("#recent-sessions-body");
+  if (!body) return;
+
+  body.innerHTML = sessions.map((session) => `
+    <tr>
+      <td class="muted">${escapeHtml(formatTime(session.last_seen_at))}</td>
+      <td>${escapeHtml(formatActiveTime(session.active_seconds))}</td>
+      <td>${escapeHtml(session.last_dots_available ?? "—")}</td>
+      <td>${escapeHtml(session.last_dot_production_rate == null ? "—" : `+${formatNumber(session.last_dot_production_rate)}/s`)}</td>
+      <td>${escapeHtml(session.last_dot_consumption_rate == null ? "—" : `-${formatNumber(session.last_dot_consumption_rate)}/s`)}</td>
+      <td><span class="pill">${escapeHtml(session.last_event_name || "—")}</span></td>
+      <td>${escapeHtml(session.last_item_id || "—")}</td>
+      <td>${escapeHtml(session.last_item_level ?? "—")}</td>
+    </tr>
+  `).join("");
+}
 
     consumer.subscriptions.create("DashboardChannel", {
       connected() {
@@ -414,7 +403,6 @@
       received(data) {
         console.log("Live dashboard update received", data);
 
-        if ("total_events" in data) updateStat("total-events", data.total_events);
         if ("total_sessions" in data) updateStat("total-sessions", data.total_sessions);
         if ("unique_players" in data) updateStat("unique-players", data.unique_players);
 

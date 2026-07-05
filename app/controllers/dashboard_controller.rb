@@ -15,10 +15,10 @@ class DashboardController < ApplicationController
 
     @event_counts = AnalyticsEvent.group(:event_name).count
     @item_placed_counts = AnalyticsEvent
-  .where(event_name: "item_placed")
-  .group(json_property("item_id"))
-  .order(Arel.sql("COUNT(*) DESC"))
-  .count
+    .where(event_name: "item_placed")
+    .group(json_property("item_id"))
+    .order(Arel.sql("COUNT(*) DESC"))
+    .count
   end
 
   def json_property(field_name)
