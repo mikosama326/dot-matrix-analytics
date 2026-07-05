@@ -77,8 +77,20 @@ class Api::EventsController < ApplicationController
       unique_players: GameSession.distinct.count(:player_id),
       total_active_seconds: GameSession.sum(:active_seconds),
       event_counts: AnalyticsEvent.group(:event_name).count,
-      recent_events: AnalyticsEvent.order(created_at: :desc).limit(10).map(&:attributes),
-      recent_sessions: GameSession.order(last_seen_at: :desc).limit(10).map(&:attributes)
+      recent_events: AnalyticsEvent.order(created_at: :desc).limit(10).map do |event|
+      {
+        created_at: event.created_at.iso8601,
+        event_name: event.event_name,
+        properties: event.properties || {}
+      }
+    end,
+
+    recent_sessions: GameSession.order(last_seen_at: :desc).limit(10).map do |session|
+      {
+        last_seen_at: session.last_seen_at&.iso8601,
+        active_seconds: session.active_seconds.to_i
+      }
+    end
     })
   end
 

@@ -18,6 +18,12 @@ Rails.application.configure do
   # Cache assets for far-future expiry since they are all digest stamped.
   config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}" }
 
+  # Allow action cable to connect to our hosted version of the website.
+  config.action_cable.allowed_request_origins = [
+  "https://dot-matrix-analytics-api.onrender.com",
+  "https://mikosama326.github.io"
+]
+
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
